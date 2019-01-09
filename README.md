@@ -1,4 +1,4 @@
-## node-red-postgres-settings
+## node-red-postgres-variable
 
 A [Node-RED](http://nodered.org) node to query [PostgreSQL](http://www.postgresql.org/).
 
