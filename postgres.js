@@ -16,13 +16,11 @@
  *
  **/
 
-var Pool = require('pg').Pool;
+ar Pool = require('pg').Pool;
 var named = require('node-postgres-named');
 var querystring = require('querystring');
 
 module.exports = function(RED) {
-    var pgconnectdata = RED.settings.get('pgconnectdata');
-    RED.nodes.addCredentials(req.params.id, pgconnectdata);
     RED.httpAdmin.get('/postgresdb/:id', function(req, res) {
         var credentials = RED.nodes.getCredentials(req.params.id);
         if (credentials) {
