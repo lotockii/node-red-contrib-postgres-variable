@@ -93,7 +93,11 @@ module.exports = function(RED) {
 
         node.topic = n.topic;
         node.postgresdb = n.postgresdb;
-        node.postgresConfig = RED.settings.get('connectPG');
+        if(RED.settings.get('connectPG')){
+            node.postgresConfig = RED.settings.get('connectPG');
+        }else{
+            node.postgresConfig = RED.nodes.getNode(this.postgresdb);
+        }
         node.sqlquery = n.sqlquery;
         node.output = n.output;
 
