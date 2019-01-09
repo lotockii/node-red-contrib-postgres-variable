@@ -16,7 +16,7 @@
  *
  **/
 
-ar Pool = require('pg').Pool;
+var Pool = require('pg').Pool;
 var named = require('node-postgres-named');
 var querystring = require('querystring');
 
