@@ -1,4 +1,4 @@
-## node-red-postgres-variable
+## node-red-contrib-postgres-variable
 
 A [Node-RED](http://nodered.org) node to query [PostgreSQL](http://www.postgresql.org/).
 
@@ -8,7 +8,7 @@ A [Node-RED](http://nodered.org) node to query [PostgreSQL](http://www.postgresq
 
 Run the following command in the root directory of your Node-RED install
 
-    npm install node-red-postgres-variable
+    npm install node-red-contrib-postgres-variable
 
  The node-red postgres node uses a template node to set the query and uses msg.queryParameters as params for the query.
  Each property in msg.queryParameters can be used as $propertyName in the query, see the 'setup params' and 'format query' node in the example.

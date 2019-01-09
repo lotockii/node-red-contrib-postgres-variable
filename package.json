@@ -1,5 +1,5 @@
 {
-  "name": "node-red-postgres-variable",
+  "name": "node-red-contrib-postgres-variable",
   "version": "0.0.5",
   "description": "Module PostgreSQL for work with Node-Red",
   "dependencies": {
