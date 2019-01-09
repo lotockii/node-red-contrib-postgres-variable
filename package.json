@@ -1,0 +1,33 @@
+{
+  "name": "node-red-postgres-variable",
+  "version": "0.0.1",
+  "description": "Module PostgreSQL for work with Node-Red",
+  "dependencies": {
+    "pg": "~7.4.1",
+    "node-postgres-named": "^2.4.1",
+    "querystring": "^0.2.0"
+  },
+  "main": "postgres.js",
+  "scripts": {
+    "test": "test"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/lotockii/node-red-postgres-variable.git"
+  },
+  "keywords": [
+    "node-red",
+    "postgres",
+    "postgresql"
+  ],
+  "node-red": {
+    "nodes": {
+      "PostgreSql": "postgres.js"
+    }
+  },
+  "author": {
+    "name": "Andrii Lototskyi",
+    "email": "dn050992lan@gmail.com"
+  },
+  "license": "ISC"
+}
