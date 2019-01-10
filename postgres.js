@@ -93,11 +93,7 @@ module.exports = function(RED) {
 
         node.topic = n.topic;
         node.postgresdb = n.postgresdb;
-        if(RED.settings.get('connectPG')){
-            node.postgresConfig = RED.settings.get('connectPG');
-        }else{
-            node.postgresConfig = RED.nodes.getNode(this.postgresdb);
-        }
+        node.postgresConfig = RED.nodes.getNode(this.postgresdb);
         node.sqlquery = n.sqlquery;
         node.output = n.output;
 
@@ -119,9 +115,15 @@ module.exports = function(RED) {
                 console.log(msg.queryParameters);
             };
 
-            var pool = new Pool(connectionConfig);
+            var allConnectings = RED.settings.get('pgConnects') ? RED.settings.get('pgConnects') : false;
 
             node.on('input', function(msg) {
+                if(allConnectings && msg.connectName){
+                    var customConnect = msg.connectName;
+                    var pool = new Pool(allConnectings[customConnect]);
+                }else{
+                    var pool = new Pool(connectionConfig);
+                }
                 pool.connect(function(err, client, done) {
                     if (err) {
                         handleError(err, msg);
