@@ -105,7 +105,9 @@ module.exports = function(RED) {
                 host: node.postgresConfig.hostname,
                 port: node.postgresConfig.port,
                 database: node.postgresConfig.db,
-                ssl: node.postgresConfig.ssl
+                ssl: node.postgresConfig.ssl,
+                idleTimeoutMillis: 1000,
+                connectionTimeoutMillis: 2000
             };
 
             var handleError = function(err, msg) {
@@ -120,7 +122,10 @@ module.exports = function(RED) {
             node.on('input', function(msg) {
                 if(allConnectings && msg.connectName){
                     var customConnect = msg.connectName;
-                    var pool = new Pool(allConnectings[customConnect]);
+                    var customConfig = allConnectings[customConnect];
+                    customConfig.idleTimeoutMillis = 2000;
+                    customConfig.connectionTimeoutMillis = 2000;
+                    var pool = new Pool(customConfig);
                 }else{
                     var pool = new Pool(connectionConfig);
                 }
@@ -146,6 +151,7 @@ module.exports = function(RED) {
                                         node.send(msg);
                                     }
                                 }
+                                client.end();
                             }
                         );
                     }
