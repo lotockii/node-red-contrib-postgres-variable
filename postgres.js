@@ -111,7 +111,7 @@ module.exports = function(RED) {
             };
 
             var handleError = function(err, msg) {
-                node.error(err);
+                node.error('postgres error', err);
                 console.log(err);
                 console.log(msg.payload);
                 console.log(msg.queryParameters);
