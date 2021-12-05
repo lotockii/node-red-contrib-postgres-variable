@@ -3,9 +3,9 @@
   "version": "0.0.16",
   "description": "Module PostgreSQL for work with Node-Red",
   "dependencies": {
-    "pg": "~7.4.1",
+    "pg": "^8.7.1",
     "node-postgres-named": "^2.4.1",
-    "querystring": "^0.2.0"
+    "querystring": "^0.2.1"
   },
   "main": "postgres.js",
   "scripts": {
