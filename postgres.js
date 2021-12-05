@@ -106,13 +106,18 @@ module.exports = function(RED) {
                 port: node.postgresConfig.port,
                 database: node.postgresConfig.db,
                 ssl: node.postgresConfig.ssl,
-                idleTimeoutMillis: 1000,
-                connectionTimeoutMillis: 2000
+                idleTimeoutMillis: 500,
+                connectionTimeoutMillis: 30000
             };
 
             var handleError = function(err, msg) {
-                node.error('postgres error', err);
-                console.log(err);
+                let res_error = {
+                    'type': 'postgres error',
+                    'request': msg.payload,
+                    'error': err
+                };
+                node.error(JSON.stringify(res_error), err);
+                console.log(res_error);
                 console.log(msg.payload);
                 console.log(msg.queryParameters);
             };
@@ -142,7 +147,6 @@ module.exports = function(RED) {
                             msg.payload,
                             msg.queryParameters,
                             function(err, results) {
-                                done();
                                 if (err) {
                                     handleError(err, msg);
                                 } else {
@@ -151,7 +155,7 @@ module.exports = function(RED) {
                                         node.send(msg);
                                     }
                                 }
-                                client.end();
+                                done();
                             }
                         );
                     }
