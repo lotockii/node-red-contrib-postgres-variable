@@ -1,174 +1,141 @@
-/**
- * Copyright 2018 Andrii Lototskyi.
- *
- * This module to connect with PostgreSQL and set credentials from
- * settings.js
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- you may not use this file except in compliance with the License.
- You may obtain a copy of the License at
- http://www.apache.org/licenses/LICENSE-2.0
- Unless required by applicable law or agreed to in writing, software
- distributed under the License is distributed on an "AS IS" BASIS,
- WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- See the License for the specific language governing permissions and
- limitations under the License.
- *
- **/
+const { Pool } = require('pg');
+const named = require('node-postgres-named');
 
-var Pool = require('pg').Pool;
-var named = require('node-postgres-named');
-var querystring = require('querystring');
-
-module.exports = function(RED) {
-    RED.httpAdmin.get('/postgresdb/:id', function(req, res) {
-        var credentials = RED.nodes.getCredentials(req.params.id);
-        if (credentials) {
-            res.send(JSON.stringify({
-                user: credentials.user,
-                hasPassword: (credentials.password && credentials.password != "")
-            }));
-        } else {
-            res.send(JSON.stringify({}));
+module.exports = function (RED) {  // Изменили export на module.exports
+    // GET request to retrieve the credentials for a specific Postgres node
+    RED.httpAdmin.get('/postgresdb/:id', async (req, res) => {
+        try {
+            const credentials = RED.nodes.getCredentials(req.params.id);
+            res.json({
+                user: credentials?.user,
+                hasPassword: !!(credentials?.password), // returns true if password exists
+            });
+        } catch (err) {
+            res.status(500).send('Error fetching credentials');
         }
     });
 
-    RED.httpAdmin.delete('/postgresdb/:id', function(req, res) {
-        RED.nodes.deleteCredentials(req.params.id);
-        res.send(200);
+    // DELETE request to delete the credentials for a specific Postgres node
+    RED.httpAdmin.delete('/postgresdb/:id', (req, res) => {
+        try {
+            RED.nodes.deleteCredentials(req.params.id);
+            res.status(200).send();
+        } catch (err) {
+            res.status(500).send('Error deleting credentials');
+        }
     });
 
-    RED.httpAdmin.post('/postgresdb/:id', function(req, res) {
-        var body = "";
-        req.on('data', function(chunk) {
-            body += chunk;
-        });
-        req.on('end', function() {
-            var newCreds = querystring.parse(body);
-            var credentials = RED.nodes.getCredentials(req.params.id) || {};
-            if (newCreds.user == null || newCreds.user == "") {
-                delete credentials.user;
-            } else {
-                credentials.user = newCreds.user;
-            }
-            if (newCreds.password == "") {
-                delete credentials.password;
-            } else {
-                credentials.password = newCreds.password || credentials.password;
-            }
-            RED.nodes.addCredentials(req.params.id, credentials);
-            res.send(200);
-        });
+    // POST request to save credentials for a specific Postgres node
+    RED.httpAdmin.post('/postgresdb/:id', async (req, res) => {
+        try {
+            let body = '';
+            req.on('data', chunk => body += chunk);
+            req.on('end', () => {
+                // Parse body using URLSearchParams
+                const newCreds = new URLSearchParams(body);
+                let credentials = RED.nodes.getCredentials(req.params.id) || {};
+                // Get user and password from URLSearchParams
+                credentials.user = newCreds.get('user') || credentials.user;
+                credentials.password = newCreds.get('password') || credentials.password;
+                RED.nodes.addCredentials(req.params.id, credentials);
+                res.status(200).send();
+            });
+        } catch (err) {
+            res.status(500).send('Error saving credentials');
+        }
     });
 
+    // Definition of a Postgres database configuration node
     function PostgresDatabaseNode(n) {
         RED.nodes.createNode(this, n);
+        const credentials = this.credentials || {};
         this.hostname = n.hostname;
         this.port = n.port;
         this.db = n.db;
         this.ssl = n.ssl;
-
-        var credentials = this.credentials;
-        if (credentials) {
-            this.user = credentials.user;
-            this.password = credentials.password;
-        }
+        this.user = credentials.user;
+        this.password = credentials.password;
     }
 
-    RED.nodes.registerType("postgresdb", PostgresDatabaseNode, {
+    RED.nodes.registerType('postgresdb', PostgresDatabaseNode, {
         credentials: {
-            user: {
-                type: "text"
-            },
-            password: {
-                type: "password"
-            }
+            user: { type: 'text' },
+            password: { type: 'password' }
         }
     });
 
+    // Helper function to execute the database query
+    async function executeQuery(pool, msg, node) {
+        try {
+            const client = await pool.connect();
+            named.patch(client); // allows named query parameters with node-postgres-named
+            const queryParams = msg.queryParameters || {};
+            const result = await client.query(msg.payload, queryParams);
+            msg.payload = result.rows; // output the result of the query
+            node.send(msg);
+            client.release();
+        } catch (err) {
+            handleError(err, msg, node);
+        }
+    }
+
+    // Helper function to handle errors and send error messages
+    function handleError(err, msg, node) {
+        node.error(`PostgreSQL error: ${err.message}`, msg);
+        msg.payload = { error: err.message };
+        node.send(msg);
+    }
+
+    // Node responsible for executing SQL queries
     function PostgresNode(n) {
         RED.nodes.createNode(this, n);
-
-        var node = this;
-
-        node.topic = n.topic;
-        node.postgresdb = n.postgresdb;
-        node.postgresConfig = RED.nodes.getNode(this.postgresdb);
-        node.sqlquery = n.sqlquery;
-        node.output = n.output;
-
-        if (node.postgresConfig) {
-
-            var connectionConfig = {
-                user: node.postgresConfig.user,
-                password: node.postgresConfig.password,
-                host: node.postgresConfig.hostname,
-                port: node.postgresConfig.port,
-                database: node.postgresConfig.db,
-                ssl: node.postgresConfig.ssl,
-                idleTimeoutMillis: 500,
-                connectionTimeoutMillis: 30000
-            };
-
-            var handleError = function(err, msg) {
-                let res_error = {
-                    'type': 'postgres error',
-                    'request': msg.payload,
-                    'error': err
-                };
-                node.error(JSON.stringify(res_error), err);
-                console.log(res_error);
-                console.log(msg.payload);
-                console.log(msg.queryParameters);
-            };
-
-            var allConnectings = RED.settings.get('pgConnects') ? RED.settings.get('pgConnects') : false;
-
-            node.on('input', function(msg) {
-                if(allConnectings && msg.connectName){
-                    var customConnect = msg.connectName;
-                    var customConfig = allConnectings[customConnect];
-                    customConfig.idleTimeoutMillis = 2000;
-                    customConfig.connectionTimeoutMillis = 2000;
-                    var pool = new Pool(customConfig);
-                }else{
-                    var pool = new Pool(connectionConfig);
-                }
-                pool.connect(function(err, client, done) {
-                    if (err) {
-                        handleError(err, msg);
-                    } else {
-                        named.patch(client);
-
-                        if (!!!msg.queryParameters)
-                            msg.queryParameters = {};
-
-                        client.query(
-                            msg.payload,
-                            msg.queryParameters,
-                            function(err, results) {
-                                if (err) {
-                                    handleError(err, msg);
-                                } else {
-                                    if (node.output) {
-                                        msg.payload = results.rows;
-                                        node.send(msg);
-                                    }
-                                }
-                                done();
-                            }
-                        );
-                    }
-                });
-            });
-        } else {
-            this.error("missing postgres configuration");
+        const node = this;
+        const configNode = RED.nodes.getNode(n.postgresdb);
+        if (!configNode) {
+            node.error('Postgres database config node is missing');
+            return;
         }
+        const defaultConfig = {
+            user: configNode.user,          // Default username
+            password: configNode.password,  // Default password
+            host: configNode.hostname,      // Default host
+            port: configNode.port,          // Default port
+            database: configNode.db,        // Default database
+            ssl: configNode.ssl,            // Default SSL setting
+            idleTimeoutMillis: 500,
+            connectionTimeoutMillis: 3000
+        };
+        const allConnectings = RED.settings.get('pgConnects') || {}; // Get all connections from Node-RED settings
+        node.on('input', async (msg) => {
+            let pool;
+            const connectName = msg.connectName;
 
-        this.on("close", function() {
-            if (node.clientdb) node.clientdb.end();
+            // If connection name is provided, use it; otherwise, use the default connection
+            if (connectName && allConnectings[connectName]) {
+                const customConfig = allConnectings[connectName]; // Get configuration for the specified connection
+                pool = new Pool({
+                    user: customConfig.user,
+                    password: customConfig.password,
+                    host: customConfig.host,
+                    port: customConfig.port,
+                    database: customConfig.database,
+                    ssl: customConfig.ssl,
+                    idleTimeoutMillis: 500,
+                    connectionTimeoutMillis: 3000
+                });
+            } else {
+                // If no connection name is provided or found, use default config
+                pool = new Pool(defaultConfig);
+            }
+
+            // Execute the query using the connection pool
+            await executeQuery(pool, msg, node);
+        });
+
+        node.on('close', () => {
+            if (pool) pool.end(); // Close the connection pool when the node is closed
         });
     }
 
-    RED.nodes.registerType("postgres", PostgresNode);
+    RED.nodes.registerType('postgres', PostgresNode);
 };
