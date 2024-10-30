@@ -28,7 +28,9 @@ Run the following command in the root directory of your Node-RED install
             host: "hostName",
             port: "port",
             database: "dataBaseName",
-            ssl: false // true/false
+            ssl: false, // true/false
+            ssl_path: "path to ssl",
+            ignore_check_ssl: false // true/false
          },
         connect2 {
             user: "usernameToDB",
@@ -36,7 +38,9 @@ Run the following command in the root directory of your Node-RED install
             host: "hostName",
             port: "port",
             database: "dataBaseName",
-            ssl: false // true/false
+            ssl: false, // true/false
+            ssl_path: "path to ssl",
+            ignore_check_ssl: false // true/false
         },
         connect3 {
             user: "usernameToDB",
@@ -44,7 +48,9 @@ Run the following command in the root directory of your Node-RED install
             host: "hostName",
             port: "port",
             database: "dataBaseName",
-            ssl: false // true/false
+            ssl: false, // true/false
+            ssl_path: "path to ssl",
+            ignore_check_ssl: false // true/false
         }
     },
 

@@ -1,5 +1,6 @@
 const { Pool } = require('pg');
 const named = require('node-postgres-named');
+const fs = require('fs');
 
 module.exports = function (RED) {  // Изменили export на module.exports
     // GET request to retrieve the credentials for a specific Postgres node
@@ -53,6 +54,8 @@ module.exports = function (RED) {  // Изменили export на module.export
         this.port = n.port;
         this.db = n.db;
         this.ssl = n.ssl;
+        this.ignore_check_ssl = n.ignore_check_ssl;
+        this.ssl_path = n.ssl_path;
         this.user = credentials.user;
         this.password = credentials.password;
     }
@@ -95,13 +98,24 @@ module.exports = function (RED) {  // Изменили export на module.export
             node.error('Postgres database config node is missing');
             return;
         }
+        let ssl_conf = configNode.ssl;
+        if (ssl_conf){
+            if (configNode.ignore_check_ssl){
+                ssl_conf = { rejectUnauthorized: false };
+            }else {
+                ssl_conf = {
+                    rejectUnauthorized: true,
+                    ca: fs.readFileSync(configNode.ssl_path).toString(),
+                };
+            }
+        }
         const defaultConfig = {
             user: configNode.user,          // Default username
             password: configNode.password,  // Default password
             host: configNode.hostname,      // Default host
             port: configNode.port,          // Default port
             database: configNode.db,        // Default database
-            ssl: configNode.ssl,            // Default SSL setting
+            ssl: ssl_conf,            // Default SSL setting
             idleTimeoutMillis: 500,
             connectionTimeoutMillis: 3000
         };
@@ -113,13 +127,24 @@ module.exports = function (RED) {  // Изменили export на module.export
             // If connection name is provided, use it; otherwise, use the default connection
             if (connectName && allConnectings[connectName]) {
                 const customConfig = allConnectings[connectName]; // Get configuration for the specified connection
+                let ssl_conf = customConfig.ssl;
+                if (ssl_conf){
+                    if (customConfig.ignore_check_ssl){
+                        ssl_conf = { rejectUnauthorized: false };
+                    }else {
+                        ssl_conf = {
+                            rejectUnauthorized: true,
+                            ca: readFileSync(customConfig.ssl_path).toString(),
+                        };
+                    }
+                }
                 pool = new Pool({
                     user: customConfig.user,
                     password: customConfig.password,
                     host: customConfig.host,
                     port: customConfig.port,
                     database: customConfig.database,
-                    ssl: customConfig.ssl,
+                    ssl: ssl_conf,
                     idleTimeoutMillis: 500,
                     connectionTimeoutMillis: 3000
                 });

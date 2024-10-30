@@ -1,0 +1,204 @@
+[
+  {
+    "id": "6bf9c09279d80258",
+    "type": "tab",
+    "label": "PostgreSQL",
+    "disabled": false,
+    "info": "",
+    "env": []
+  },
+  {
+    "id": "b45a4243b38acac8",
+    "type": "inject",
+    "z": "6bf9c09279d80258",
+    "name": "Run request",
+    "props": [
+      {
+        "p": "payload"
+      },
+      {
+        "p": "topic",
+        "vt": "str"
+      }
+    ],
+    "repeat": "",
+    "crontab": "",
+    "once": false,
+    "onceDelay": 0.1,
+    "topic": "",
+    "payload": "",
+    "payloadType": "date",
+    "x": 130,
+    "y": 220,
+    "wires": [
+      [
+        "6a57e37f95926ea0"
+      ]
+    ]
+  },
+  {
+    "id": "6a57e37f95926ea0",
+    "type": "function",
+    "z": "6bf9c09279d80258",
+    "name": "Sql Request",
+    "func": "msg.payload = 'SELECT NOW();';\n\nreturn msg;",
+    "outputs": 1,
+    "timeout": 0,
+    "noerr": 0,
+    "initialize": "",
+    "finalize": "",
+    "libs": [],
+    "x": 310,
+    "y": 220,
+    "wires": [
+      [
+        "45f32076536a86b4"
+      ]
+    ]
+  },
+  {
+    "id": "6524b993b4b58f92",
+    "type": "debug",
+    "z": "6bf9c09279d80258",
+    "name": "debug 1",
+    "active": true,
+    "tosidebar": true,
+    "console": false,
+    "tostatus": false,
+    "complete": "true",
+    "targetType": "full",
+    "statusVal": "",
+    "statusType": "auto",
+    "x": 700,
+    "y": 100,
+    "wires": []
+  },
+  {
+    "id": "45f32076536a86b4",
+    "type": "postgres",
+    "z": "6bf9c09279d80258",
+    "postgresdb": "470ec04dc6169f14",
+    "name": "Connect Default",
+    "output": true,
+    "outputs": 1,
+    "x": 500,
+    "y": 220,
+    "wires": [
+      [
+        "74972a2ba114f8f8"
+      ]
+    ]
+  },
+  {
+    "id": "872cd9bcb046adda",
+    "type": "inject",
+    "z": "6bf9c09279d80258",
+    "name": "Run request",
+    "props": [
+      {
+        "p": "payload"
+      },
+      {
+        "p": "topic",
+        "vt": "str"
+      }
+    ],
+    "repeat": "",
+    "crontab": "",
+    "once": false,
+    "onceDelay": 0.1,
+    "topic": "",
+    "payload": "",
+    "payloadType": "date",
+    "x": 130,
+    "y": 100,
+    "wires": [
+      [
+        "0f2e91779ac787e7"
+      ]
+    ]
+  },
+  {
+    "id": "0f2e91779ac787e7",
+    "type": "function",
+    "z": "6bf9c09279d80258",
+    "name": "Sql Request",
+    "func": "msg.payload = 'SELECT NOW();';\nmsg.connectName = 'connect1';\n\nreturn msg;",
+    "outputs": 1,
+    "timeout": 0,
+    "noerr": 0,
+    "initialize": "",
+    "finalize": "",
+    "libs": [],
+    "x": 310,
+    "y": 100,
+    "wires": [
+      [
+        "25d727558c073b94"
+      ]
+    ]
+  },
+  {
+    "id": "74972a2ba114f8f8",
+    "type": "debug",
+    "z": "6bf9c09279d80258",
+    "name": "debug 2",
+    "active": true,
+    "tosidebar": true,
+    "console": false,
+    "tostatus": false,
+    "complete": "true",
+    "targetType": "full",
+    "statusVal": "",
+    "statusType": "auto",
+    "x": 680,
+    "y": 220,
+    "wires": []
+  },
+  {
+    "id": "25d727558c073b94",
+    "type": "postgres",
+    "z": "6bf9c09279d80258",
+    "postgresdb": "470ec04dc6169f14",
+    "name": "Connect Custom",
+    "output": true,
+    "outputs": 1,
+    "x": 510,
+    "y": 100,
+    "wires": [
+      [
+        "6524b993b4b58f92"
+      ]
+    ]
+  },
+  {
+    "id": "e9c7c132d0d3f46e",
+    "type": "comment",
+    "z": "6bf9c09279d80258",
+    "name": "REQUEST WITH CUSTOM CONNECT",
+    "info": "",
+    "x": 190,
+    "y": 60,
+    "wires": []
+  },
+  {
+    "id": "3d43d47e76895b23",
+    "type": "comment",
+    "z": "6bf9c09279d80258",
+    "name": "REQUEST WITH DEFAULT CONNECT",
+    "info": "",
+    "x": 190,
+    "y": 180,
+    "wires": []
+  },
+  {
+    "id": "470ec04dc6169f14",
+    "type": "postgresdb",
+    "hostname": "localhost",
+    "port": "5432",
+    "db": "postgres",
+    "ssl": false,
+    "ignore_check_ssl": false,
+    "ssl_path": "/home/ubuntu/certificate.pem"
+  }
+]
