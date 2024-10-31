@@ -60,7 +60,7 @@ module.exports = function (RED) {  // Изменили export на module.export
         this.password = credentials.password;
     }
 
-    RED.nodes.registerType('postgresdb', PostgresDatabaseNode, {
+    RED.nodes.registerType('postgresdb-var', PostgresDatabaseNode, {
         credentials: {
             user: { type: 'text' },
             password: { type: 'password' }
@@ -162,5 +162,5 @@ module.exports = function (RED) {  // Изменили export на module.export
         });
     }
 
-    RED.nodes.registerType('postgres', PostgresNode);
+    RED.nodes.registerType('postgres-var', PostgresNode);
 };

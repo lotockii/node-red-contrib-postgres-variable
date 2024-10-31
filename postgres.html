@@ -11,7 +11,7 @@
   limitations under the License.
 -->
 
-<script type="text/x-red" data-template-name="postgresdb">
+<script type="text/x-red" data-template-name="postgresdb-var">
     <div class="form-row">
         <label for="node-config-input-hostname"><i class="fa fa-bookmark"></i> Host</label>
         <input class="input-append-left" type="text" id="node-config-input-hostname" placeholder="localhost" style="width: 40%;" >
@@ -45,7 +45,7 @@
 </script>
 
 <script type="text/javascript">
-    RED.nodes.registerType('postgresdb',{
+    RED.nodes.registerType('postgresdb-var',{
         category: 'config',
         color:"rgb(218, 196, 180)",
         defaults: {
@@ -66,7 +66,7 @@
     });
 </script>
 
-<script type="text/x-red" data-template-name="postgres">
+<script type="text/x-red" data-template-name="postgres-var">
          <div class="form-row">
         <label for="node-input-name"><i class="fa fa-tag"></i> Name</label>
         <input type="text" id="node-input-name" placeholder="Name">
@@ -91,11 +91,11 @@
 
 </script>
 <script type="text/javascript">
-    RED.nodes.registerType('postgres',{
+    RED.nodes.registerType('postgres-var',{
         category: 'storage-output',
         color:"rgb(183, 252, 148)",
         defaults: {
-            postgresdb: { type:"postgresdb",required:true},
+            postgresdb: { type:"postgresdb-var",required:true},
             name: {value:""},
             output: {value:false},
             outputs: {value:0}

@@ -1,6 +1,6 @@
 {
   "name": "node-red-contrib-postgres-variable",
-  "version": "0.1.7",
+  "version": "0.1.8",
   "description": "Module PostgreSQL for work with Node-Red",
   "dependencies": {
     "pg": "~8.13.0",
