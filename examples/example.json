@@ -52,7 +52,7 @@
     "y": 220,
     "wires": [
       [
-        "45f32076536a86b4"
+        "3787ad2b751144d0"
       ]
     ]
   },
@@ -72,22 +72,6 @@
     "x": 700,
     "y": 100,
     "wires": []
-  },
-  {
-    "id": "45f32076536a86b4",
-    "type": "postgres",
-    "z": "6bf9c09279d80258",
-    "postgresdb": "470ec04dc6169f14",
-    "name": "Connect Default",
-    "output": true,
-    "outputs": 1,
-    "x": 500,
-    "y": 220,
-    "wires": [
-      [
-        "74972a2ba114f8f8"
-      ]
-    ]
   },
   {
     "id": "872cd9bcb046adda",
@@ -134,7 +118,7 @@
     "y": 100,
     "wires": [
       [
-        "25d727558c073b94"
+        "3030feea8abfd134"
       ]
     ]
   },
@@ -154,22 +138,6 @@
     "x": 680,
     "y": 220,
     "wires": []
-  },
-  {
-    "id": "25d727558c073b94",
-    "type": "postgres",
-    "z": "6bf9c09279d80258",
-    "postgresdb": "470ec04dc6169f14",
-    "name": "Connect Custom",
-    "output": true,
-    "outputs": 1,
-    "x": 510,
-    "y": 100,
-    "wires": [
-      [
-        "6524b993b4b58f92"
-      ]
-    ]
   },
   {
     "id": "e9c7c132d0d3f46e",
@@ -192,13 +160,45 @@
     "wires": []
   },
   {
-    "id": "470ec04dc6169f14",
-    "type": "postgresdb",
+    "id": "3030feea8abfd134",
+    "type": "postgres-var",
+    "z": "6bf9c09279d80258",
+    "postgresdb": "9e9be99d6bdb30d2",
+    "name": "Custom connect",
+    "output": true,
+    "outputs": 1,
+    "x": 510,
+    "y": 100,
+    "wires": [
+      [
+        "6524b993b4b58f92"
+      ]
+    ]
+  },
+  {
+    "id": "3787ad2b751144d0",
+    "type": "postgres-var",
+    "z": "6bf9c09279d80258",
+    "postgresdb": "9e9be99d6bdb30d2",
+    "name": "Default connect",
+    "output": true,
+    "outputs": 1,
+    "x": 500,
+    "y": 220,
+    "wires": [
+      [
+        "74972a2ba114f8f8"
+      ]
+    ]
+  },
+  {
+    "id": "9e9be99d6bdb30d2",
+    "type": "postgresdb-var",
     "hostname": "localhost",
     "port": "5432",
     "db": "postgres",
     "ssl": false,
-    "ignore_check_ssl": false,
-    "ssl_path": "/home/ubuntu/certificate.pem"
+    "ignore_check_ssl": true,
+    "ssl_path": ""
   }
 ]
