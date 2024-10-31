@@ -60,7 +60,7 @@ module.exports = function (RED) {  // Изменили export на module.export
         this.password = credentials.password;
     }
 
-    RED.nodes.registerType('postgresdb-var', PostgresDatabaseNode, {
+    RED.nodes.registerType('postgresdb', PostgresDatabaseNode, {
         credentials: {
             user: { type: 'text' },
             password: { type: 'password' }
@@ -134,7 +134,7 @@ module.exports = function (RED) {  // Изменили export на module.export
                     }else {
                         ssl_conf = {
                             rejectUnauthorized: true,
-                            ca: readFileSync(customConfig.ssl_path).toString(),
+                            ca: fs.readFileSync(customConfig.ssl_path).toString(),
                         };
                     }
                 }
@@ -162,5 +162,5 @@ module.exports = function (RED) {  // Изменили export на module.export
         });
     }
 
-    RED.nodes.registerType('postgres-var', PostgresNode);
+    RED.nodes.registerType('postgres', PostgresNode);
 };

@@ -161,7 +161,7 @@
   },
   {
     "id": "3030feea8abfd134",
-    "type": "postgres-var",
+    "type": "postgres",
     "z": "6bf9c09279d80258",
     "postgresdb": "9e9be99d6bdb30d2",
     "name": "Custom connect",
@@ -177,7 +177,7 @@
   },
   {
     "id": "3787ad2b751144d0",
-    "type": "postgres-var",
+    "type": "postgres",
     "z": "6bf9c09279d80258",
     "postgresdb": "9e9be99d6bdb30d2",
     "name": "Default connect",
@@ -193,7 +193,7 @@
   },
   {
     "id": "9e9be99d6bdb30d2",
-    "type": "postgresdb-var",
+    "type": "postgresdb",
     "hostname": "localhost",
     "port": "5432",
     "db": "postgres",
