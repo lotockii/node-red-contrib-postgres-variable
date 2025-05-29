@@ -1,7 +1,7 @@
 {
   "name": "node-red-contrib-postgres-variable",
-  "version": "0.2.0",
-  "description": "Module PostgreSQL for work with Node-Red",
+  "version": "0.3.0",
+  "description": "PostgreSQL module for Node-RED with dynamic configuration from contexts (flow, global, environment)",
   "dependencies": {
     "pg": "~8.13.0",
     "node-postgres-named": "^2.4.1"
@@ -17,7 +17,12 @@
   "keywords": [
     "node-red",
     "postgres",
-    "postgresql"
+    "postgresql",
+    "database",
+    "context",
+    "environment",
+    "ssl",
+    "dynamic-config"
   ],
   "node-red": {
     "version": ">=2.0.0",

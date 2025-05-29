@@ -13,56 +13,271 @@
 
 <script type="text/x-red" data-template-name="postgresdb">
     <div class="form-row">
-        <label for="node-config-input-hostname"><i class="fa fa-bookmark"></i> Host</label>
-        <input class="input-append-left" type="text" id="node-config-input-hostname" placeholder="localhost" style="width: 40%;" >
-        <label for="node-config-input-port" style="margin-left: 10px; width: 35px; "> Port</label>
-        <input type="text" id="node-config-input-port" placeholder="5432" style="width:45px">
+        <label for="node-config-input-name"><i class="fa fa-tag"></i> Name</label>
+        <input type="text" id="node-config-input-name" placeholder="Name" style="width: 70%;">
     </div>
     <div class="form-row">
-        <label for="node-config-input-db"><i class="fa fa-briefcase"></i> Database</label>
-        <input type="text" id="node-config-input-db" placeholder="test">
+        <label for="node-config-input-hostname"><i class="fa fa-server"></i> Host</label>
+        <input type="text" id="node-config-input-hostname" style="width: 70%;">
     </div>
     <div class="form-row">
-        <label for="node-config-input-name"><i class="fa fa-user"></i> Username</label>
-        <input type="text" id="node-config-input-user" placeholder="postgres" style="margin-bottom: 12px;">
-        <label for="node-config-input-password"><i class="fa fa-lock"></i> Password</label>
-        <input type="password" id="node-config-input-password" placeholder="postgres">
+        <label for="node-config-input-port"><i class="fa fa-plug"></i> Port</label>
+        <input type="text" id="node-config-input-port" style="width: 70%;">
     </div>
     <div class="form-row">
-        <label for="node-config-input-ssl_path"><i class="fa fa-expeditedssl"></i> SSL Path</label>
-        <input class="input-append-left" type="text" id="node-config-input-ssl_path" placeholder="path to SSL Certificate" style="width: 70%;" >
+        <label for="node-config-input-db"><i class="fa fa-database"></i> Database</label>
+        <input type="text" id="node-config-input-db" style="width: 70%;">
     </div>
     <div class="form-row">
-       <label>&nbsp;</label>
-       <input type="checkbox" id="node-config-input-ssl" style="display: inline-block; width: auto; vertical-align: top;">
-       <label for="node-config-input-ssl" style="width: 70%;">Use SSL</label>
-   </div>
+        <label for="node-config-input-ssl"><i class="fa fa-lock"></i> SSL</label>
+        <input type="text" id="node-config-input-ssl" style="width: 70%;">
+    </div>
+    <div class="form-row" id="ssl-path-row">
+        <label for="node-config-input-ssl_path"><i class="fa fa-file"></i> SSL Certificate Path</label>
+        <input type="text" id="node-config-input-ssl_path" style="width: 70%;">
+    </div>
     <div class="form-row">
-       <label>&nbsp;</label>
-       <input type="checkbox" id="node-config-input-ignore_check_ssl" style="display: inline-block; width: auto; vertical-align: top;">
-       <label for="node-config-input-ignore_check_ssl" style="width: 70%;">Ignore Check SSL</label>
-   </div>
+        <label for="node-config-input-ignore_check_ssl"><i class="fa fa-check-circle"></i> Ignore SSL Certificate</label>
+        <input type="text" id="node-config-input-ignore_check_ssl" style="width: 70%;">
+    </div>
+    <div class="form-row">
+        <label for="node-config-input-user"><i class="fa fa-user"></i> Username</label>
+        <input type="text" id="node-config-input-user" style="width: 70%;">
+    </div>
+    <div class="form-row">
+        <label for="node-config-input-password-type"><i class="fa fa-key"></i> Password Type</label>
+        <select id="node-config-input-password-type" style="width: 70%;">
+            <option value="str">Direct Password (secure)</option>
+            <option value="flow">Flow Context</option>
+            <option value="global">Global Context</option>
+            <option value="env">Environment Variable</option>
+        </select>
+    </div>
+    <div class="form-row" id="password-str-row">
+        <label for="node-config-input-password-visible"><i class="fa fa-lock"></i> Password</label>
+        <input type="password" id="node-config-input-password-visible" style="width: 70%;">
+    </div>
+    <div class="form-row" id="password-context-row" style="display: none;">
+        <label for="node-config-input-password-context"><i class="fa fa-code"></i> Variable Name</label>
+        <input type="text" id="node-config-input-password-context" style="width: 70%;">
+    </div>
+    <!-- Hidden field for Node-RED credentials -->
+    <input type="password" id="node-config-input-password" style="display: none;">
 </script>
 
 <script type="text/javascript">
-    RED.nodes.registerType('postgresdb',{
-        category: 'config',
-        color:"rgb(218, 196, 180)",
+    RED.nodes.registerType("postgresdb", {
+        category: "config",
         defaults: {
-            hostname: { value:"localhost",required:true},
-            port: { value: 5432,required:true},
-            db: { value:"postgres",required:true},
-            ssl: { value:false },
-            ignore_check_ssl: { value:false },
-            ssl_path: { value: "" }
-        },
-        credentials: {
-            user: {type: "text"},
-            password: {type: "password"}
+            name: { value: "" },
+            hostname: { value: "localhost" },
+            hostnameType: { value: "str" },
+            port: { value: "5432" },
+            portType: { value: "str" },
+            db: { value: "postgres" },
+            dbType: { value: "str" },
+            ssl: { value: false },
+            sslType: { value: "bool" },
+            ignore_check_ssl: { value: false },
+            ignore_check_sslType: { value: "bool" },
+            ssl_path: { value: "" },
+            ssl_pathType: { value: "str" },
+            user: { value: "" },
+            userType: { value: "str" },
+            password: { value: "" },
+            passwordType: { value: "str" },
+            passwordContext: { value: "" }
         },
         label: function() {
-            return this.name||this.hostname+":"+this.port+"/"+this.db;
-        }
+            return this.name || "PostgreSQL";
+        },
+        oneditprepare: function() {
+            // Host
+            $("#node-config-input-hostname").typedInput({
+                default: 'str',
+                types: ['str', 'flow', 'global', 'env']
+            });
+            $("#node-config-input-hostname").typedInput('type', this.hostnameType || 'str');
+            $("#node-config-input-hostname").typedInput('value', this.hostname || 'localhost');
+            
+            // Port
+            $("#node-config-input-port").typedInput({
+                default: 'str',
+                types: ['str', 'flow', 'global', 'env']
+            });
+            $("#node-config-input-port").typedInput('type', this.portType || 'str');
+            $("#node-config-input-port").typedInput('value', this.port || '5432');
+            
+            // DB
+            $("#node-config-input-db").typedInput({
+                default: 'str',
+                types: ['str', 'flow', 'global', 'env']
+            });
+            $("#node-config-input-db").typedInput('type', this.dbType || 'str');
+            $("#node-config-input-db").typedInput('value', this.db || 'postgres');
+            
+            // SSL
+            $("#node-config-input-ssl").typedInput({
+                default: 'bool',
+                types: ['bool', 'flow', 'global', 'env']
+            });
+            $("#node-config-input-ssl").typedInput('type', this.sslType || 'bool');
+            $("#node-config-input-ssl").typedInput('value', this.ssl !== undefined ? this.ssl : false);
+            
+            // SSL Path
+            $("#node-config-input-ssl_path").typedInput({
+                default: 'str',
+                types: ['str', 'flow', 'global', 'env']
+            });
+            $("#node-config-input-ssl_path").typedInput('type', this.ssl_pathType || 'str');
+            $("#node-config-input-ssl_path").typedInput('value', this.ssl_path || '');
+            
+            // Ignore SSL
+            $("#node-config-input-ignore_check_ssl").typedInput({
+                default: 'bool',
+                types: ['bool', 'flow', 'global', 'env']
+            });
+            $("#node-config-input-ignore_check_ssl").typedInput('type', this.ignore_check_sslType || 'bool');
+            $("#node-config-input-ignore_check_ssl").typedInput('value', this.ignore_check_ssl !== undefined ? this.ignore_check_ssl : false);
+            
+            // SSL Path row visibility logic
+            var checkSSLVisibility = function() {
+                var sslType = $("#node-config-input-ssl").typedInput('type');
+                var sslValue = $("#node-config-input-ssl").typedInput('value');
+                var isSSLEnabled = false;
+                
+                if (sslType === 'bool') {
+                    isSSLEnabled = sslValue === true || sslValue === "true";
+                } else {
+                    // For flow/global/env, show if there's a value (assume it might be true)
+                    isSSLEnabled = !!sslValue;
+                }
+                
+                if (isSSLEnabled) {
+                    $("#ssl-path-row").show();
+                } else {
+                    $("#ssl-path-row").hide();
+                }
+            };
+            
+            $("#node-config-input-ssl").on("change", checkSSLVisibility);
+            checkSSLVisibility();
+            
+            // User
+            $("#node-config-input-user").typedInput({
+                default: 'str',
+                types: ['str', 'flow', 'global', 'env']
+            });
+            $("#node-config-input-user").typedInput('type', this.userType || 'str');
+            $("#node-config-input-user").typedInput('value', this.user || '');
+            
+            // Password type selection
+            if (this.passwordType && this.passwordType !== 'str') {
+                // Context type
+                $("#node-config-input-password-type").val(this.passwordType);
+                $("#node-config-input-password-context").val(this.passwordContext || '');
+            } else {
+                // String type
+                $("#node-config-input-password-type").val('str');
+            }
+            
+            // Password field visibility logic
+            var updatePasswordFieldVisibility = function() {
+                var passwordType = $("#node-config-input-password-type").val();
+                if (passwordType === 'str') {
+                    $("#password-str-row").show();
+                    $("#password-context-row").hide();
+                } else {
+                    $("#password-str-row").hide();
+                    $("#password-context-row").show();
+                }
+            };
+            
+            $("#node-config-input-password-type").on("change", updatePasswordFieldVisibility);
+            updatePasswordFieldVisibility();
+            
+            // Sync visible password field with hidden credentials field
+            $("#node-config-input-password-visible").on("input", function() {
+                $("#node-config-input-password").val($(this).val());
+            });
+            
+            // Handle placeholder behavior
+            $("#node-config-input-password-visible").on("focus", function() {
+                if ($(this).attr('placeholder') === '••••••••••••••••') {
+                    $(this).attr('placeholder', 'Enter new password or leave empty to keep existing');
+                }
+            });
+            
+            $("#node-config-input-password-visible").on("blur", function() {
+                var node = this;
+                var inputVal = $(this).val();
+                if (!inputVal && node.credentials && node.credentials.has_password) {
+                    $(this).attr('placeholder', '••••••••••••••••');
+                }
+            }.bind(this));
+            
+            // Load existing password if available
+            if (this.credentials && this.credentials.password) {
+                $("#node-config-input-password-visible").val(this.credentials.password);
+                $("#node-config-input-password").val(this.credentials.password);
+            } else if (this.credentials && this.credentials.has_password) {
+                // Password exists but not shown for security - show placeholder
+                $("#node-config-input-password-visible").attr('placeholder', '••••••••••••••••');
+                $("#node-config-input-password-visible").val('');
+            } else {
+                // No password - set default placeholder
+                $("#node-config-input-password-visible").attr('placeholder', 'Enter password');
+                $("#node-config-input-password-visible").val('');
+            }
+        },
+        oneditsave: function() {
+            // Save values and types separately
+            this.hostname = $("#node-config-input-hostname").typedInput('value');
+            this.hostnameType = $("#node-config-input-hostname").typedInput('type');
+            
+            this.port = $("#node-config-input-port").typedInput('value');
+            this.portType = $("#node-config-input-port").typedInput('type');
+            
+            this.db = $("#node-config-input-db").typedInput('value');
+            this.dbType = $("#node-config-input-db").typedInput('type');
+            
+            this.ssl = $("#node-config-input-ssl").typedInput('value');
+            this.sslType = $("#node-config-input-ssl").typedInput('type');
+            
+            this.ignore_check_ssl = $("#node-config-input-ignore_check_ssl").typedInput('value');
+            this.ignore_check_sslType = $("#node-config-input-ignore_check_ssl").typedInput('type');
+            
+            this.ssl_path = $("#node-config-input-ssl_path").typedInput('value');
+            this.ssl_pathType = $("#node-config-input-ssl_path").typedInput('type');
+            
+            this.user = $("#node-config-input-user").typedInput('value');
+            this.userType = $("#node-config-input-user").typedInput('type');
+            
+            // Handle password based on type
+            var passwordType = $("#node-config-input-password-type").val();
+            
+            this.passwordType = passwordType;
+            
+            if (passwordType === 'str') {
+                // String password - save to credentials, clear context
+                this.passwordContext = '';
+                this.password = '';  // Clear from defaults
+                // Sync visible field to hidden credentials field only if not empty
+                var visiblePassword = $("#node-config-input-password-visible").val();
+                if (visiblePassword) {
+                    $("#node-config-input-password").val(visiblePassword);
+                }
+                // If empty, keep existing password (don't overwrite)
+            } else {
+                // Context password - save context reference
+                var passwordValue = $("#node-config-input-password-context").val();
+                this.passwordContext = passwordValue;
+                this.password = '';  // Clear from defaults
+            }
+        },
+        credentials: {
+            password: { type: 'password' }
+        },
     });
 </script>
 
@@ -76,9 +291,9 @@
         <input type="text" id="node-input-postgresdb">
     </div>
     <div class="form-row">
-        <label>&nbsp;</label>
-        <input type="checkbox" id="node-input-output" placeholder="once" style="display: inline-block; width: auto; vertical-align: top;">
-        <label for="node-input-output" style="width: 70%;">Receive query output ?</label>
+        <label for="node-input-output"><i class="fa fa-sign-out"></i> Output</label>
+        <input type="checkbox" id="node-input-output" style="display: inline-block; width: auto; vertical-align: top;">
+        <span>Receive query output</span>
     </div>
 </script>
 <script type="text/x-red" data-help-name="postgres">
@@ -124,3 +339,109 @@
     });
 
 </script>
+
+<script type="text/x-red" data-help-name="postgresdb">
+    <p>A PostgreSQL database configuration node with flexible context support:</p>
+    
+    <h3>Configuration Fields</h3>
+    <p>All configuration fields support multiple input types:</p>
+    <ul>
+        <li><b>String</b>: Direct value</li>
+        <li><b>Flow</b>: Value from flow context</li>
+        <li><b>Global</b>: Value from global context</li>
+        <li><b>Environment</b>: Value from environment variable</li>
+    </ul>
+    
+    <h3>Supported Fields</h3>
+    <ul>
+        <li><b>Host</b>: Database server hostname</li>
+        <li><b>Port</b>: Database server port</li>
+        <li><b>Database</b>: Database name</li>
+        <li><b>Username</b>: Database username</li>
+        <li><b>SSL</b>: Enable SSL connection (boolean)</li>
+        <li><b>SSL Certificate Path</b>: Path to SSL certificate file</li>
+        <li><b>Ignore SSL Certificate</b>: Skip SSL certificate validation (boolean)</li>
+    </ul>
+    
+    <h3>Password Security</h3>
+    <p>Password field has special security handling:</p>
+    <ul>
+        <li><b>Direct Password</b>: Stored securely in Node-RED credentials (encrypted)</li>
+        <li><b>Context Types</b>: Only variable names stored, actual passwords retrieved from contexts</li>
+    </ul>
+    
+    <h3>Examples</h3>
+    <p><b>Environment-based configuration:</b></p>
+    <ul>
+        <li>Host: Environment → <code>DB_HOST</code></li>
+        <li>Port: Environment → <code>DB_PORT</code></li>
+        <li>Password: Environment → <code>DB_PASSWORD</code></li>
+    </ul>
+    
+    <p><b>Mixed configuration:</b></p>
+    <ul>
+        <li>Host: String → <code>localhost</code></li>
+        <li>Database: Flow → <code>current_db</code></li>
+        <li>Username: Global → <code>db_user</code></li>
+    </ul>
+</script>
+
+<style>
+    .form-row {
+        margin-bottom: 10px;
+    }
+    .form-row label {
+        display: inline-block;
+        width: 120px;
+    }
+    .form-row input[type="text"],
+    .form-row input[type="password"] {
+        width: 250px;
+    }
+    .form-row input[type="checkbox"] {
+        margin-left: 120px;
+    }
+    .help-text {
+        font-size: 0.8em;
+        color: #666;
+        margin-top: 4px;
+    }
+    
+    /* Password field styling with CSS classes */
+    .password-str input {
+        -webkit-text-security: disc;
+        text-security: disc;
+        font-family: monospace !important;
+        letter-spacing: 2px;
+    }
+    
+    .password-context input {
+        -webkit-text-security: none;
+        text-security: none;
+        font-family: inherit !important;
+        letter-spacing: normal;
+    }
+    
+    /* Additional password hiding styles */
+    .red-ui-typedInput.password-hidden input {
+        -webkit-text-security: disc !important;
+        text-security: disc !important;
+        font-family: monospace !important;
+        letter-spacing: 2px !important;
+    }
+    
+    .red-ui-typedInput.password-visible input {
+        -webkit-text-security: none !important;
+        text-security: none !important;
+        font-family: inherit !important;
+        letter-spacing: normal !important;
+    }
+    
+    /* Direct input styling for Node-RED 4.0.3 */
+    input.password-hidden-input {
+        -webkit-text-security: disc !important;
+        text-security: disc !important;
+        font-family: monospace !important;
+        letter-spacing: 2px !important;
+    }
+</style>
