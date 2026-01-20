@@ -1,6 +1,7 @@
 const { Pool } = require('pg');
 const named = require('node-postgres-named');
 const fs = require('fs');
+const caCache = new Map();
 
 module.exports = function (RED) {
 
@@ -166,18 +167,51 @@ module.exports = function (RED) {
         }
     });
 
-    // Helper function to execute the database query
     async function executeQuery(pool, msg, node) {
-        try {
-            const client = await pool.connect();
-            named.patch(client); // allows named query parameters with node-postgres-named
-            const queryParams = msg.queryParameters || {};
-            const result = await client.query(msg.payload, queryParams);
-            msg.payload = result.rows; // output the result of the query
-            node.send(msg);
-            client.release();
-        } catch (err) {
-            handleError(err, msg, node);
+        const sql = String(msg.payload || '').trim().toLowerCase();
+        const isSelect = sql.startsWith('select');
+        const hasLocking = /\bfor\s+(update|share|no\s+key\s+update|key\s+share)\b/i.test(sql);
+        const allowRetry = msg.allowRetry === true || (isSelect && !hasLocking);
+        const isRetryable = (err) => {
+            const code = err && err.code;
+            if (code && ['ECONNRESET', 'ETIMEDOUT', 'EPIPE'].includes(code)) return true;
+
+            const m = String((err && err.message) || '');
+            return (
+                m.includes('Connection terminated unexpectedly') ||
+                m.includes('connection timeout') ||
+                m.includes('terminating connection') ||
+                m.includes('server closed the connection')
+            );
+        };
+
+        for (let attempt = 1; attempt <= 2; attempt++) {
+            let client;
+            let lastErr = null;
+            try {
+                client = await pool.connect();
+
+                const queryParams = msg.queryParameters || {};
+                const result = await client.query(msg.payload, queryParams);
+
+                msg.payload = result.rows;
+                node.send(msg);
+                return;
+            } catch (err) {
+                lastErr = err;
+
+                if (attempt === 1 && allowRetry && isRetryable(err)) {
+                    await new Promise(r => setTimeout(r, 200));
+                    continue;
+                }
+                handleError(err, msg, node);
+                return;
+            } finally {
+                if (client) {
+                    if (lastErr) client.release(lastErr);
+                    else client.release();
+                }
+            }
         }
     }
 
@@ -197,38 +231,24 @@ module.exports = function (RED) {
             node.error('Postgres database config node is missing');
             return;
         }
+        let pool = null;
+        let poolKey = '';
+
+        const poolOptions = {
+            max: 3,
+            idleTimeoutMillis: 30000,
+            connectionTimeoutMillis: 10000
+        };
 
         node.on('input', async (msg) => {
             try {
                 // Get configuration with context resolution
                 const config = configNode.getConfig(msg, node);
-                
+
                 // Validate password
                 if (config.password === null || config.password === undefined) {
                     node.error('Password is null or undefined', msg);
                     return;
-                }
-                
-                // Configure SSL
-                let ssl_conf = false;
-                if (config.ssl === true) {
-                    if (config.ignore_check_ssl === true) {
-                        // SSL enabled but ignore certificate validation
-                        ssl_conf = { rejectUnauthorized: false };
-                    } else {
-                        // SSL enabled with certificate validation
-                        ssl_conf = { rejectUnauthorized: true };
-                        
-                        // Add certificate if path is provided
-                        if (config.ssl_path) {
-                            try {
-                                ssl_conf.ca = fs.readFileSync(config.ssl_path).toString();
-                            } catch (certErr) {
-                                node.error(`Failed to read SSL certificate from path: ${config.ssl_path}. Error: ${certErr.message}`, msg);
-                                return;
-                            }
-                        }
-                    }
                 }
 
                 const defaultConfig = {
@@ -237,57 +257,120 @@ module.exports = function (RED) {
                     host: config.hostname,
                     port: config.port,
                     database: config.db,
-                    ssl: ssl_conf,
-                    idleTimeoutMillis: 500,
-                    connectionTimeoutMillis: 3000
+                    ...poolOptions
                 };
 
                 const allConnectings = RED.settings.get('pgConnects') || {};
                 const connectName = msg.connectName;
-                let pool;
 
-                if (connectName && allConnectings[connectName]) {
-                    const customConfig = allConnectings[connectName];
-                    let customSslConf = false;
-                    if (customConfig.ssl === true) {
-                        if (customConfig.ignore_check_ssl === true) {
-                            customSslConf = { rejectUnauthorized: false };
+                const useCustom = connectName && allConnectings[connectName];
+
+                const effective = useCustom ? allConnectings[connectName] : {
+                    user: defaultConfig.user,
+                    password: defaultConfig.password,
+                    host: defaultConfig.host,
+                    port: defaultConfig.port,
+                    database: defaultConfig.database,
+                    ssl: config.ssl,
+                    ignore_check_ssl: config.ignore_check_ssl,
+                    ssl_path: config.ssl_path
+                };
+
+                if (useCustom) {
+                    const missing = [];
+                    if (!effective.host) missing.push('host');
+                    if (!effective.port) missing.push('port');
+                    if (!effective.database) missing.push('database');
+                    if (!effective.user) missing.push('user');
+                    if (!effective.password) missing.push('password');
+                    if (missing.length) {
+                        node.error(`pgConnects[${connectName}] missing fields: ${missing.join(', ')}`, msg);
+                        return;
+                    }
+                }
+
+                const newKey = JSON.stringify({
+                    host: effective.host,
+                    port: effective.port,
+                    db: effective.database,
+                    user: effective.user,
+                    ssl: !!effective.ssl,
+                    ignore: !!effective.ignore_check_ssl,
+                    ca: effective.ssl_path || ''
+                });
+
+                if (msg.forceReconnect === true && pool) {
+                    try { await pool.end(); } catch(e) {}
+                    pool = null;
+                    poolKey = '';
+                }
+                if (msg.forceReconnect === true && effective.ssl_path) {
+                    caCache.delete(effective.ssl_path);
+                }
+                if (!pool || poolKey !== newKey) {
+                    if (pool) {
+                        try {
+                            await pool.end();
+                        } catch (e) {
+                        }
+                    }
+                    poolKey = newKey;
+
+                    // ssl_conf для effective
+                    let effSslConf = false;
+                    if (effective.ssl === true) {
+                        if (effective.ignore_check_ssl === true) {
+                            effSslConf = {rejectUnauthorized: false};
                         } else {
-                            customSslConf = { rejectUnauthorized: true };
-                            if (customConfig.ssl_path) {
+                            effSslConf = {rejectUnauthorized: true};
+                            if (effective.ssl_path) {
                                 try {
-                                    customSslConf.ca = fs.readFileSync(customConfig.ssl_path).toString();
+                                    if (!caCache.has(effective.ssl_path)) {
+                                        caCache.set(effective.ssl_path, fs.readFileSync(effective.ssl_path).toString());
+                                    }
+                                    effSslConf.ca = caCache.get(effective.ssl_path);
                                 } catch (certErr) {
-                                    node.error(`Failed to read SSL certificate from custom config path: ${customConfig.ssl_path}. Error: ${certErr.message}`, msg);
+                                    node.error(`Failed to read SSL certificate from path: ${effective.ssl_path}. Error: ${certErr.message}`, msg);
                                     return;
                                 }
                             }
                         }
                     }
+
                     pool = new Pool({
-                        user: customConfig.user,
-                        password: customConfig.password,
-                        host: customConfig.host,
-                        port: customConfig.port,
-                        database: customConfig.database,
-                        ssl: customSslConf,
-                        idleTimeoutMillis: 500,
-                        connectionTimeoutMillis: 3000
+                        user: effective.user,
+                        password: effective.password,
+                        host: effective.host,
+                        port: effective.port,
+                        database: effective.database,
+                        ssl: effSslConf,
+                        ...poolOptions
                     });
-                } else {
-                    pool = new Pool(defaultConfig);
+
+                    pool.on('connect', (client) => {
+                        try { named.patch(client); } catch (e) {}
+                    });
+                    pool.on('error', (err) => node.warn(`PG pool error: ${err.message}`));
                 }
 
+                if (!pool) {
+                    node.error('PostgreSQL pool is not initialized', msg);
+                    return;
+                }
                 await executeQuery(pool, msg, node);
             } catch (err) {
                 handleError(err, msg, node);
             }
         });
 
-        node.on('close', () => {
-            if (pool) pool.end();
+        node.on('close', async () => {
+            if (pool) {
+                try {
+                    await pool.end();
+                } catch (e) {
+                }
+            }
         });
     }
-
     RED.nodes.registerType('postgres', PostgresNode);
 };
