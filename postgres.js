@@ -99,16 +99,40 @@ module.exports = function (RED) {
         // Method to get configuration values with context resolution
         this.getConfig = function(msg, executingNode) {
             const config = {};
+            const missing = [];
+
+            const resolveValue = (name, rawValue, type, fallback) => {
+                const resolved = getValueFromContext(executingNode || this, rawValue, type, msg);
+                const isContext = type && type !== 'str' && type !== 'bool';
+                if (isContext && (resolved === null || resolved === undefined || resolved === '')) {
+                    missing.push(name);
+                }
+                return resolved !== null && resolved !== undefined && resolved !== '' ? resolved : fallback;
+            };
             
             // Parse values using separate type fields
-            config.hostname = getValueFromContext(executingNode || this, this.hostname, this.hostnameType, msg) || 'localhost';
-            config.port = parseInt(getValueFromContext(executingNode || this, this.port, this.portType, msg)) || 5432;
-            config.db = getValueFromContext(executingNode || this, this.db, this.dbType, msg) || 'postgres';
+            config.hostname = resolveValue('host', this.hostname, this.hostnameType, 'localhost');
+            const resolvedPort = resolveValue('port', this.port, this.portType, 5432);
+            config.port = parseInt(resolvedPort, 10);
+            if (!Number.isFinite(config.port) || config.port <= 0) {
+                config.port = 5432;
+                if (this.portType && this.portType !== 'str') {
+                    missing.push('port');
+                }
+            }
+            config.db = resolveValue('database', this.db, this.dbType, 'postgres');
             config.ssl = this.parseBooleanValue(this.ssl, this.sslType, msg, executingNode);
             config.ignore_check_ssl = this.parseBooleanValue(this.ignore_check_ssl, this.ignore_check_sslType, msg, executingNode);
             config.ssl_path = getValueFromContext(executingNode || this, this.ssl_path, this.ssl_pathType, msg);
-            config.user = getValueFromContext(executingNode || this, this.user, this.userType, msg) || '';
+            config.user = resolveValue('user', this.user, this.userType, '');
             config.password = this.parsePasswordValue(msg, executingNode) || '';
+            if (this.passwordType && this.passwordType !== 'str' && (config.password === null || config.password === undefined || config.password === '')) {
+                missing.push('password');
+            }
+
+            if (missing.length) {
+                config._missing = Array.from(new Set(missing));
+            }
             
             return config;
         };
@@ -233,6 +257,8 @@ module.exports = function (RED) {
         }
         let pool = null;
         let poolKey = '';
+        let lastMissingSignature = '';
+        let lastMissingWarnAt = 0;
 
         const poolOptions = {
             max: 3,
@@ -244,6 +270,20 @@ module.exports = function (RED) {
             try {
                 // Get configuration with context resolution
                 const config = configNode.getConfig(msg, node);
+
+                if (config._missing && config._missing.length) {
+                    const signature = config._missing.join(',');
+                    const now = Date.now();
+                    if (signature !== lastMissingSignature || now - lastMissingWarnAt > 10000) {
+                        node.warn(`Postgres config missing in context: ${signature}`, msg);
+                        lastMissingSignature = signature;
+                        lastMissingWarnAt = now;
+                    }
+                    node.status({ fill: 'yellow', shape: 'ring', text: `missing config: ${signature}` });
+                    return;
+                }
+
+                node.status({});
 
                 // Validate password
                 if (config.password === null || config.password === undefined) {
