@@ -92,6 +92,12 @@ module.exports = function (RED) {
         this.password = n.password;
         this.passwordType = n.passwordType || 'str';
         this.passwordContext = n.passwordContext || '';
+        this.pool_max = n.pool_max;
+        this.pool_maxType = n.pool_maxType || 'str';
+        this.pool_idle_timeout = n.pool_idle_timeout;
+        this.pool_idle_timeoutType = n.pool_idle_timeoutType || 'str';
+        this.pool_connection_timeout = n.pool_connection_timeout;
+        this.pool_connection_timeoutType = n.pool_connection_timeoutType || 'str';
         
         // Get credentials for string passwords
         const credentials = this.credentials || {};
@@ -104,9 +110,13 @@ module.exports = function (RED) {
             const resolveValue = (name, rawValue, type, fallback) => {
                 const resolved = getValueFromContext(executingNode || this, rawValue, type, msg);
                 const isContext = type && type !== 'str' && type !== 'bool';
-                if (isContext && (resolved === null || resolved === undefined || resolved === '')) {
+                if (isContext && (resolved === null || resolved === undefined)) {
                     missing.push(name);
                 }
+                return resolved !== null && resolved !== undefined && resolved !== '' ? resolved : fallback;
+            };
+            const resolveOptionalValue = (rawValue, type, fallback) => {
+                const resolved = getValueFromContext(executingNode || this, rawValue, type, msg);
                 return resolved !== null && resolved !== undefined && resolved !== '' ? resolved : fallback;
             };
             
@@ -126,9 +136,12 @@ module.exports = function (RED) {
             config.ssl_path = getValueFromContext(executingNode || this, this.ssl_path, this.ssl_pathType, msg);
             config.user = resolveValue('user', this.user, this.userType, '');
             config.password = this.parsePasswordValue(msg, executingNode) || '';
-            if (this.passwordType && this.passwordType !== 'str' && (config.password === null || config.password === undefined || config.password === '')) {
+            if (this.passwordType && this.passwordType !== 'str' && (config.password === null || config.password === undefined)) {
                 missing.push('password');
             }
+            config.pool_max = resolveOptionalValue(this.pool_max, this.pool_maxType, 20);
+            config.pool_idle_timeout = resolveOptionalValue(this.pool_idle_timeout, this.pool_idle_timeoutType, 10000);
+            config.pool_connection_timeout = resolveOptionalValue(this.pool_connection_timeout, this.pool_connection_timeoutType, 30000);
 
             if (missing.length) {
                 config._missing = Array.from(new Set(missing));
@@ -260,10 +273,10 @@ module.exports = function (RED) {
         let lastMissingSignature = '';
         let lastMissingWarnAt = 0;
 
-        const poolOptions = {
-            max: 3,
-            idleTimeoutMillis: 30000,
-            connectionTimeoutMillis: 10000
+        const defaultPoolOptions = {
+            max: 20,
+            idleTimeoutMillis: 10000,
+            connectionTimeoutMillis: 30000
         };
 
         node.on('input', async (msg) => {
@@ -297,7 +310,6 @@ module.exports = function (RED) {
                     host: config.hostname,
                     port: config.port,
                     database: config.db,
-                    ...poolOptions
                 };
 
                 const allConnectings = RED.settings.get('pgConnects') || {};
@@ -314,6 +326,28 @@ module.exports = function (RED) {
                     ssl: config.ssl,
                     ignore_check_ssl: config.ignore_check_ssl,
                     ssl_path: config.ssl_path
+                };
+                const toInt = (value, fallback) => {
+                    const parsed = parseInt(value, 10);
+                    return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
+                };
+                const poolOptions = {
+                    max: toInt(
+                        useCustom && effective.max !== undefined ? effective.max : config.pool_max,
+                        defaultPoolOptions.max
+                    ),
+                    idleTimeoutMillis: toInt(
+                        useCustom && effective.idleTimeoutMillis !== undefined
+                            ? effective.idleTimeoutMillis
+                            : config.pool_idle_timeout,
+                        defaultPoolOptions.idleTimeoutMillis
+                    ),
+                    connectionTimeoutMillis: toInt(
+                        useCustom && effective.connectionTimeoutMillis !== undefined
+                            ? effective.connectionTimeoutMillis
+                            : config.pool_connection_timeout,
+                        defaultPoolOptions.connectionTimeoutMillis
+                    )
                 };
 
                 if (useCustom) {

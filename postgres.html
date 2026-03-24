@@ -25,6 +25,18 @@
         <input type="text" id="node-config-input-port" style="width: 70%;">
     </div>
     <div class="form-row">
+        <label for="node-config-input-pool_max"><i class="fa fa-users"></i> Pool Max</label>
+        <input type="text" id="node-config-input-pool_max" style="width: 70%;">
+    </div>
+    <div class="form-row">
+        <label for="node-config-input-pool_idle_timeout"><i class="fa fa-clock-o"></i> Pool Idle Timeout (ms)</label>
+        <input type="text" id="node-config-input-pool_idle_timeout" style="width: 70%;">
+    </div>
+    <div class="form-row">
+        <label for="node-config-input-pool_connection_timeout"><i class="fa fa-hourglass-half"></i> Pool Connection Timeout (ms)</label>
+        <input type="text" id="node-config-input-pool_connection_timeout" style="width: 70%;">
+    </div>
+    <div class="form-row">
         <label for="node-config-input-db"><i class="fa fa-database"></i> Database</label>
         <input type="text" id="node-config-input-db" style="width: 70%;">
     </div>
@@ -74,6 +86,12 @@
             hostnameType: { value: "str" },
             port: { value: "5432" },
             portType: { value: "str" },
+            pool_max: { value: "20" },
+            pool_maxType: { value: "str" },
+            pool_idle_timeout: { value: "10000" },
+            pool_idle_timeoutType: { value: "str" },
+            pool_connection_timeout: { value: "30000" },
+            pool_connection_timeoutType: { value: "str" },
             db: { value: "postgres" },
             dbType: { value: "str" },
             ssl: { value: false },
@@ -107,6 +125,30 @@
             });
             $("#node-config-input-port").typedInput('type', this.portType || 'str');
             $("#node-config-input-port").typedInput('value', this.port || '5432');
+            
+            // Pool Max
+            $("#node-config-input-pool_max").typedInput({
+                default: 'str',
+                types: ['str', 'flow', 'global', 'env']
+            });
+            $("#node-config-input-pool_max").typedInput('type', this.pool_maxType || 'str');
+            $("#node-config-input-pool_max").typedInput('value', this.pool_max || '20');
+            
+            // Pool Idle Timeout
+            $("#node-config-input-pool_idle_timeout").typedInput({
+                default: 'str',
+                types: ['str', 'flow', 'global', 'env']
+            });
+            $("#node-config-input-pool_idle_timeout").typedInput('type', this.pool_idle_timeoutType || 'str');
+            $("#node-config-input-pool_idle_timeout").typedInput('value', this.pool_idle_timeout || '10000');
+            
+            // Pool Connection Timeout
+            $("#node-config-input-pool_connection_timeout").typedInput({
+                default: 'str',
+                types: ['str', 'flow', 'global', 'env']
+            });
+            $("#node-config-input-pool_connection_timeout").typedInput('type', this.pool_connection_timeoutType || 'str');
+            $("#node-config-input-pool_connection_timeout").typedInput('value', this.pool_connection_timeout || '30000');
             
             // DB
             $("#node-config-input-db").typedInput({
@@ -238,6 +280,15 @@
             this.port = $("#node-config-input-port").typedInput('value');
             this.portType = $("#node-config-input-port").typedInput('type');
             
+            this.pool_max = $("#node-config-input-pool_max").typedInput('value');
+            this.pool_maxType = $("#node-config-input-pool_max").typedInput('type');
+            
+            this.pool_idle_timeout = $("#node-config-input-pool_idle_timeout").typedInput('value');
+            this.pool_idle_timeoutType = $("#node-config-input-pool_idle_timeout").typedInput('type');
+            
+            this.pool_connection_timeout = $("#node-config-input-pool_connection_timeout").typedInput('value');
+            this.pool_connection_timeoutType = $("#node-config-input-pool_connection_timeout").typedInput('type');
+            
             this.db = $("#node-config-input-db").typedInput('value');
             this.dbType = $("#node-config-input-db").typedInput('type');
             
@@ -356,6 +407,9 @@
     <ul>
         <li><b>Host</b>: Database server hostname</li>
         <li><b>Port</b>: Database server port</li>
+        <li><b>Pool Max</b>: Maximum number of clients in pool</li>
+        <li><b>Pool Idle Timeout</b>: How long a client can stay idle (ms)</li>
+        <li><b>Pool Connection Timeout</b>: How long to wait for a connection (ms)</li>
         <li><b>Database</b>: Database name</li>
         <li><b>Username</b>: Database username</li>
         <li><b>SSL</b>: Enable SSL connection (boolean)</li>
